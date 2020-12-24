@@ -1,2 +1,2 @@
-# LDynArray
-C Dynamic Array
+# ldyna
+### C Dynamic Array
