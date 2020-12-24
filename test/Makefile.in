@@ -1,0 +1,31 @@
+# @configure_input@
+VPATH=../src
+OBJ_FILES=run_tests.o test_int.o test_sorted_int.o
+LDFLAGS := -L$(VPATH) $(LDFLAGS) -lpthread
+
+# Package-specific substitution variables
+package=@PACKAGE_NAME@
+version=@PACKAGE_VERSION@
+tarname=@PACKAGE_TARNAME@
+distdir=$(tarname)-$(version)
+
+# Prefix-specific substitution variable
+PREFIX=@prefix@
+
+test: $(LIBNAME) $(OBJ_FILES)
+	@$(CC) $(CFLAGS) $(OBJ_FILES) -o $(EXEC_TEST) $(LDFLAGS)
+
+%.o: %.c
+	@$(CC) -c -O2 $<
+
+clean:
+	-rm -fv *.o
+	-rm $(EXEC_TEST)
+
+Makefile: Makefile.in ../config.status
+	cd .. && ./config.status test/$@
+
+./config.status: ../configure
+	cd .. && ./config.status --recheck
+
+.PHONY: test clean

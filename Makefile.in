@@ -1,0 +1,85 @@
+# @configure_input@
+LIB=ldyna
+LIBNAME=libldyna.a
+TEST_FILES=run_tests.c test_int.c test_sorted_int.c
+EXEC_TEST=run_tests
+
+CFLAGS=-pedantic -W -Wall -O2
+CDEBUG=-g -O0
+LDFLAGS=-static -l$(LIB)
+VPATH=src/:test/
+
+# Package-specific substitution variables
+package=@PACKAGE_NAME@
+version=@PACKAGE_VERSION@
+tarname=@PACKAGE_TARNAME@
+distdir=$(tarname)-$(version)
+# Prefix-specific substitution variable
+PREFIX=@prefix@
+
+ifeq ($(PREFIX),)
+	PREFIX := /usr/local
+endif
+export LIB
+export LIBNAME
+export EXEC_TEST
+export CFLAGS
+export LDFLAGS
+export CDEBUG
+
+all: build
+
+# Distribution
+
+dist: $(distdir).tar.gz
+
+$(distdir).tar.gz: $(distdir)
+	tar chof - $(distdir) | gzip -9 -c > $@
+	rm -rf $(distdir)
+
+$(distdir): FORCE
+	mkdir -p $(distdir)/src
+	mkdir -p $(distdir)/test
+	cp -r configure.ac configure Makefile.in LICENSE README.md $(distdir)
+	cp -r src/Makefile.in src/$(LIB).c src/$(LIB).h $(distdir)/src
+	cd test/ && cp -r Makefile.in $(TEST_FILES) ../$(distdir)/test
+
+distcheck: $(distdir).tar.gz
+	gzip -cd $(distdir).tar.gz | tar xvf -
+	cd $(distdir) && ./configure
+	-cd $(distdir) && $(MAKE) build
+	cd $(distdir) && $(MAKE) DESTDIR=$${PWD}/_inst install
+	cd $(distdir) && $(MAKE) DESTDIR=$${PWD}/_inst uninstall
+	@remaining="`find $(distdir)/_inst -type f | wc -l`";             \
+	if test "${remaining}" -ne 0; then                                \
+		echo "*** $${remaining} file(s) remaining in stage directory!"; \
+		exit 1;                                                         \
+	fi
+	cd $(distdir) && $(MAKE) clean
+	rm -rf $(distdir)
+	@echo "*** Package $(distdir).tar.gz is ready for distribution"
+
+FORCE:
+	-rm -f $(distdir).tar.gz
+	-rm -rf $(distdir)
+
+check: test
+	./test/$(EXEC_TEST)
+
+clean:
+	-cd src && $(MAKE) $@
+	-cd test && $(MAKE) $@
+
+build debug install uninstall:
+	cd src && $(MAKE) $@
+
+test:
+	@(cd test && $(MAKE) $@)
+
+Makefile: Makefile.in config.status
+	./config.status $@
+
+config.status: configure
+	./config.status --recheck
+
+.PHONY: FORCE all build debug clean dist distcheck install unistall test check
